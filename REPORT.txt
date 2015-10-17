@@ -1,0 +1,117 @@
+Name : Pradyumna Kaushik
+B Number : B00594994
+Email : pkaushi1@binghamton.edu
+
+PROJECT-1 : CONTENT ADDRESSABLE NETWORKS
+----------------------------------------
+
+	Design
+	------
+	1. A 10*10 coordinate space is utilized starting from 0 to 10 on the X-axis and 0 to 10 on the Y-axis.
+	2. The Bootstrap node is decided aprior and hardcoded. Due to this all the nodes know the hostname of the Bootstrap node to be able to JOIN the network.
+	3. A set of operations can be performed from a node. These operations are
+		a. JOIN
+		b. INSERT
+		c. SEARCH
+		d. VIEW
+		e. LEAVE
+
+		There are certain that needs to be satisfied for a node to perform an operation. The criteria are as give below.
+			a. A node should not be able to JOIN a network after already having joined it.
+			b. A node should not be able to LEAVE a network after already having left it.
+			c. A node should not be able to INSERT filenames into the network without joining it.
+			d. A node should not be able to SEARCH filenames in the network without joining it.
+			e. A node should not be able to LEAVE the network once it has already left.
+			f. The bootstrap node should not be allowed to leave the network.
+
+		The design used to implement required is a COMMAND TOGGLE. Here depending upon the state of the node, certain commands are allowed and certain commands are not.
+			
+			STATE				POSSIBLE COMMANDS
+			-----				-----------------
+			bootstrap			INSERT, VIEW, SEARCH
+			before join			VIEW, JOIN
+			after join			INSERT, VIEW, SEARCH, LEAVE
+			after leave			VIEW, JOIN
+
+	
+	4. JOIN operation
+		When the node JOINs the network the following things take place for the JOIN to be successful.
+			a. The node sends a JOIN REQUEST to the bootstrap node.
+			b. The bootstrap node retrieves a random set of ACTIVE PEERS and sends it back.
+			c. The node now chooses a random point in the range (0-10,0-10).
+			d. The node then sends a JOIN REQUEST along with the random point to any one of the active peers received.
+			e. The peer in the network that receives the JOIN REQUEST checks whether the random point is present in its zone. 
+			   If yes then the following things happen,
+				a. The peer splits its zone and assigns the zone, in which the random point recides, to the new node.
+				b. It then sends an update message to its neighbours about the change in state along with the information (including zone) of the new node.
+				c. The neighbours, having received the update message, update their routing tables correspondingly.
+				d. The peer then sends a JOIN confirmation to the new node along with all the neighbour information and the new node initializes its state and joins the network.
+
+			   If not then the following things happen,
+				a. The peer finds, among its neighbours, the closest one to the random point.
+				b. It then forwards the JOIN REQUEST to the neighbour.
+
+	5. INSERT operation
+		When a filenames is inserted using the INSERT command the following things take place.
+			a. The inserted filename is mapped to a coordinate point.
+			b. If the mapped coordinate point is present in its zone then the following things happen,
+				a. The peer adds the filename to its set of filenames.
+				b. The peer sends a INSERT successful message back to the source where it is displayed.
+
+			   If the mapped coordinate point is not present in its zone then the following things happen,
+				a. The peer checks whether the mapped coordinate in any of its neighbours' zones. If yes then it forwards the INSERT message to that neighbour.
+				b. If not then the peer finds, among its neighbours, the closest one to the random point.
+				c. The peer adds its information to the route traversed.
+				d. It then forwards the INSERT message to the neighbour.
+
+	6. SEARCH operation
+		When a filename is searched using the SEARCH command the following things takes place.
+			a. The peer maps the filename to a coordinate space.
+			a. The peer checks whether the mapped coordinate point is present in its zone.
+			   If yes then the following things happens,
+				a. The filename is retrieved.
+				b. A SEARCH success message is sent back to the source along with the following information,
+					a. Peer in which filename was present.
+					b. Hostname of peer in which filename was present.
+					c. IP address of peer in which filename was present.
+					d. Route taken to reach the peer in which the file was present
+				
+			   If not then the following things happen,
+				a. The peer finds, among its neighbours, the closest one to the mapped coordinate point.
+				b. The peer adds its information to the route traversed.
+				c. It then forwards the SEARCH request to the chosen neighbour. 
+
+	7. LEAVE operation
+		When a peer wants to leave the network the following things happen,
+			a. It finds, amongst its neighbours, the one which is suitable for taking over the zone.
+			b. If it finds a suitable neighbour, the following things happen,
+				a. It sends a LEAVE message, along with filenames to be transfered, providing its information the chosen neighbour.
+				b. The neighbour upon receiving the LEAVE message performs the following things,
+					a. It merges its zone with that of the leaving peer's zone.
+					b. It sends an update to the neighbours of leaving peer and itself about the change in state.
+					c. The neighbours then update their routing tables to reflect the change.
+					d. The peer then updates its own routing table to include neighbours of the leaving peer.
+					e. It finally sends a confirmation message back to the leaving peer.
+					f. The leaving peer then de-initializes its state and leaves the network.
+			   If it does not find a suitable neighbour to takeover the zone then the following things happen,
+				a. The peer finds, amongst its neighbours, the one with the smallest zone.
+				b. It sends a LEAVE request, along with filenames to transfer, to that neighbour. It also indicates that it is a temporary takeover.
+				c. The neighbour upon receipt of the message adds the leaving peer's information to its temporary data stores.
+				d. The neighbour then sends an update message to its neighbours and the leaving peer's neighbours about the change in state. 
+				e. It then sends a takeover confirmation to the leaving peer.
+				f. The leaving peer then de-initializes its state and leaves the network.
+
+
+	
+
+	Implementation methods
+	----------------------
+	1. Used socket programming to communicate between nodes.
+	2. Any message to be transfered is wrapped in an object and serialized.
+	3. Each message type of message has a corresponding wrapper class.
+	4. Each node has a client which is constantly sending messages and a server which is constantly listening for messages.
+	5. Packages
+		a. Connections : contains the server and the client for message receipt and transfer resepectively.
+		b. Exceptions : contains custom exception objects that can get thrown during the running of the program.
+		c. Nodes : here all the functionality is implemented.
+		d. Serializables : contains all the wrapper classes and dependent classes that are transmitted across to other peers.
